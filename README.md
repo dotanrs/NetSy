@@ -4,7 +4,13 @@ Create and track a small network of neurons
 
 ## Usage
 
-see examples
+see examples.
+
+To run them, simply
+
+`git clone https://github.com/dotanrs/netsy.git`
+
+`python netsy/examples/<select file>`
 
 ## prerequisites
 
@@ -14,7 +20,7 @@ In the terminal...
 
 1. Python3:
 
-`$ Python3 --version`
+`$ Python --version`
 
 
 if not found:
