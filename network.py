@@ -6,10 +6,20 @@ class Network:
         self.neurons = []
 
     def update_connection_strength(input_n, output_n, new_value):
+        if isinstance(input_n, list):
+            for single_neuron in input_n:
+                self.update_connection_strength(single_neuron, new_value)
+            return
+
+        if isinstance(output_n, list):
+            for single_neuron in output_n:
+                self.update_connection_strength(single_neuron, new_value)
+            return
+
         input_n.update_connection_strength(output_n, new_value)
 
     def create_neuron(self, ntype = None, **kwargs):
-        neuron = n.neuron_factory(ntype, **kwargs)
+        neuron = ntype(**kwargs)
 
         self.neurons.append(neuron)
         return neuron
@@ -41,7 +51,7 @@ class Network:
     def neuron_list(self):
         return self.neurons
 
-    def get_activations(self, neurons = None, steps = 80):
+    def run_and_get_activations(self, neurons = None, steps = 80):
 
         if not neurons:
             neurons = self.neuron_list

@@ -8,6 +8,7 @@ DEFAULT_NOISE_MEAN = 0.5
 DEFAULT_DECAY = 0.1
 SPIKE_SIZE = 3
 DEFAULT_THRESHOLD_P = 0.05
+DEFAULT_SIGMOID_MEAN = 1
 
 def get_from_kwargs_or_default(argname, default, **kwargs):
 	return kwargs[argname] if argname in kwargs else default
@@ -19,36 +20,46 @@ class Utils:
 		return var - var * coef
 
 
-def neuron_factory(ntype, **kwargs):
-	if ntype == "whitenoise":
-		return WhiteNoiseNeuron(**kwargs)
-
-	elif ntype == "threshold":
-		return ThresholdNeuron(**kwargs)
-
-	elif ntype == "binarynoise":
-		return BinaryNoiseNeuron(**kwargs)
-
-	raise(KeyError("no such neuron type"))
-
-
 class Neuron:
+	"""
+	A simple neuron that transmit the input it recieves
+	"""
 
 	def __init__(self, name = "anonymous neuron", **kwargs):
 		range_default = [ACTIVATION_RANGE_LOW, ACTIVATION_RANGE_HIGH]
+
+		# The minimal and maximal values of activation the neuron can have
 		self.range = get_from_kwargs_or_default("range", range_default, **kwargs)
+
+		# If set, the neuron will day after this many iterations
 		self.lifespan = get_from_kwargs_or_default("lifespan", False, **kwargs)
+
+		# If set, the neuron will print logs to console
 		self.log = get_from_kwargs_or_default("log", False, **kwargs)
+
+		# The length of the refractory period, if set
 		self.refractory_time = get_from_kwargs_or_default("refractory_time", 2, **kwargs)
 
+		# Array of neurons to send the signal to
 		self.out_synapses = []
+
+		# Number of iterations passed
+		self.ticks = 0
+
 		self.activation = self.range[0]
-		self.name = name
+		self.name = self._name_prefix + name
 		self.in_synapses = 0
 		self.input = 0
-		self.ticks = 0
 		self.in_refractory_period = False
 		self.refractory_period_timer = 0
+		self.is_active = True
+
+	@property
+	def _name_prefix(self):
+		return "[{0}] ".format(self._type_identifier())
+
+	def _type_identifier(self):
+		return "N"
 
 	def _log(self, param, value):
 		if not self.log:
@@ -56,6 +67,7 @@ class Neuron:
 		print("[%s] %s = %s" % (self.name, param, str(value)))
 
 	def _apply_input(self):
+		self._log("Input", self.input)
 		self.activation += self.input
 		self.input = 0
 
@@ -67,21 +79,36 @@ class Neuron:
 			self.activation = self.range[0]
 
 	def _calc_output(self):
+		"""
+		called in each run, not including refractory period
+		"""
 		self._apply_input()
 		self._apply_range()
 
-	def _post_transmission(self):
+	def _internal_processes(self):
+		"""
+		Called in each run, including in refractory period
+		"""
 		self.activation = 0
 
 	def run(self):
+		"""
+		This function is assumed to be called exactly once per iteration of the 
+		network
+		"""
+		if not self.is_active:
+			return
+
+		self.ticks += 1
 
 		if self.lifespan and self.ticks > self.lifespan:
 			self.activation = 0
+			self.is_active = False
 			for neuron, connection_strength in self.out_synapses:
 				neuron._decrease_input_count(1)
 			return
-			
-		self._post_transmission()
+		
+		self._internal_processes()
 
 		if self.in_refractory_period:
 			if self.refractory_period_timer > self.refractory_time:
@@ -96,14 +123,11 @@ class Neuron:
 		signal = self.get_signal()
 
 		if signal !=0:
-
-			self._log("Sengind signal", signal)
-
+			self._log("Sendind signal", signal)
 			for neuron, connection_strength in self.out_synapses:
-				neuron._log("Receiving signal", str(signal) + "*" + str(connection_strength))
+				# neuron._log("Receiving signal", str(signal) + " * " + str(connection_strength))
 				neuron.recieve_signal(signal * connection_strength)
 
-		self.ticks += 1
 
 	def show_log(self):
 		self.log = True
@@ -159,6 +183,10 @@ class Neuron:
 
 
 class ThresholdNeuron(Neuron):
+	"""
+	The threshold neuron will aggregate activation until it reaches a threshold (self.threshold)
+	and then fire a signal (SPIKE_SIZE) and reset the activity
+	"""
 
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
@@ -166,8 +194,10 @@ class ThresholdNeuron(Neuron):
 		self.threshold 		   = get_from_kwargs_or_default("threshold", 1, **kwargs)
 		self.decay_coefficient = get_from_kwargs_or_default("decay_coefficient", DEFAULT_DECAY, **kwargs)
 		self.range[1] = SPIKE_SIZE
-		self.name = "[TH] " + self.name
 		self._log("range", self.range)
+
+	def _type_identifier(self):
+		return "TH"
 
 	def get_signal(self):
 		if self.activation == SPIKE_SIZE:
@@ -185,7 +215,7 @@ class ThresholdNeuron(Neuron):
 			self.activation = SPIKE_SIZE
 			
 
-	def _post_transmission(self):
+	def _internal_processes(self):
 		if self.activation >= SPIKE_SIZE:
 			self.in_refractory_period = True
 			self.refractory_period_timer = 1
@@ -195,25 +225,37 @@ class ThresholdNeuron(Neuron):
 
 
 class WhiteNoiseNeuron(Neuron):
+	"""
+	A neuron that sends a random valued signal. The signal is sampled uniformly with span 1
+	and mean self.mean
+	"""
 
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self.mean = get_from_kwargs_or_default("mean", DEFAULT_NOISE_MEAN, **kwargs)
-		self.name = "[WN] " + self.name
+
+	def _type_identifier(self):
+		return "WN"
 
 	def get_signal(self):
 		self.activation = random.random() * self.mean * 2
 		return self.activation
 
-	def _post_transmission(self):
+	def _internal_processes(self):
 		pass
 
 class BinaryNoiseNeuron(ThresholdNeuron):
+	"""
+	A neuron that files a spike (self.range[1]) W.P. self.p. 
+	"""
 
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
 		self.p = get_from_kwargs_or_default("p", DEFAULT_THRESHOLD_P, **kwargs)
-		self.name = "[BN] " + self.name
+		self.refractory_time = 0
+
+	def _type_identifier(self):
+		return "BN"
 
 	def _apply_input(self):
 		pass
@@ -226,4 +268,31 @@ class BinaryNoiseNeuron(ThresholdNeuron):
 			self.activation = self.range[0]
 			
 		return self.activation
+
+
+class SigmoidNeuron(Neuron):
+	""" 
+	A neuron who's output is tanh of it's input
+	"""
+
+	def __init__(self, **kwargs):
+		self.mean = get_from_kwargs_or_default("mean", DEFAULT_SIGMOID_MEAN, **kwargs)
+		super().__init__(**kwargs)
+		self.range = [-1 * self.mean, 1 * self.mean]
+
+	def _type_identifier(self):
+		return "SIG"
+
+	def _apply_range(self):
+		pass
+
+	def get_signal(self):
+		if self.in_synapses:
+			self.activation /= self.in_synapses
+		else:
+			return 0
+		return math.tanh(self.activation) * self.mean
+
+	def _internal_processes(self):
+		self.activation = 0
 
