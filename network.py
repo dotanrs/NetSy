@@ -67,4 +67,21 @@ class Network:
             self.run()
                 
         return activations
+        
+    def run_and_get_phases(self, neurons = None, steps = 80):
+
+        if not neurons:
+            neurons = self.neuron_list
+        
+        activations = {}
+        for neuron in neurons:
+            activations[neuron] = []
+        
+        for i in range(steps):
+            for neuron in neurons:
+                activations[neuron].append(neuron.get_activation())
+
+            self.run()
+                
+        return activations
 

@@ -125,7 +125,7 @@ class Neuron:
 		if signal !=0:
 			self._log("Sendind signal", signal)
 			for neuron, connection_strength in self.out_synapses:
-				# neuron._log("Receiving signal", str(signal) + " * " + str(connection_strength))
+				neuron._log("Receiving signal", str(signal) + " * " + str(connection_strength))
 				neuron.recieve_signal(signal * connection_strength)
 
 
@@ -279,6 +279,14 @@ class SigmoidNeuron(Neuron):
 		self.mean = get_from_kwargs_or_default("mean", DEFAULT_SIGMOID_MEAN, **kwargs)
 		super().__init__(**kwargs)
 		self.range = [-1 * self.mean, 1 * self.mean]
+		self.bias = get_from_kwargs_or_default("bias", 0, **kwargs)
+		self.tanh_bias = get_from_kwargs_or_default("tanh_bias", 0, **kwargs)
+		self.activation = get_from_kwargs_or_default("init", self.range[0], **kwargs)
+		self.der_step = get_from_kwargs_or_default("der_step", 0.001, **kwargs)
+		# self.activation = self.activation + random.random() * 0.01
+		self._log("start", self.activation)
+		self.decay_coefficient = 1
+
 
 	def _type_identifier(self):
 		return "SIG"
@@ -286,13 +294,21 @@ class SigmoidNeuron(Neuron):
 	def _apply_range(self):
 		pass
 
+	def _apply_input(self):
+
+		if self.input != 0:
+			der = -self.activation + self.bias + math.tanh(self.input + self.tanh_bias)
+			self.activation += der * self.der_step
+			self.input = 0
+		self._log("current", self.activation)
+
+
 	def get_signal(self):
-		if self.in_synapses:
-			self.activation /= self.in_synapses
-		else:
-			return 0
-		return math.tanh(self.activation) * self.mean
+		return self.activation
+
+	def get_activation(self):
+		return self.activation # + random.random()
 
 	def _internal_processes(self):
-		self.activation = 0
+		pass # self.activation = Utils.decay(self.activation, self.decay_coefficient)
 

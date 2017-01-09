@@ -35,4 +35,4 @@ If you don't have brew:
 
 `pip install matplotlib`
 
-`pip install numpy` (?)
+`pip install numpy`

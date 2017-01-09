@@ -1,4 +1,6 @@
 import matplotlib.pyplot as plt
+import sys, os
+sys.path.insert(1, os.path.join(sys.path[0], '../..'))
 from netsy import network as n
 from netsy import display as d
 from netsy.factory import NeuronDict as nd
@@ -29,7 +31,7 @@ for neuron in threshold:
     neuron.listen_to(noise, "random")
 
 # Create more neurons, this time sigmoid
-sigmoid = net.create_neuron_array(name="sig", ntype=nd.sigmoid, size=10)
+sigmoid = net.create_neuron_array(name="sig", ntype=nd.sigmoid, size=3, der_step=0.1, tanh_bias=-2)
 
 # Each one will be connected to a few noise neurons by random
 for neuron in sigmoid:
@@ -37,7 +39,7 @@ for neuron in sigmoid:
 	neuron.listen_to(listento, 10)
 
 # Select this neuron to print it's logs to console
-sigmoid[0].show_log()
+sigmoid[-1].show_log()
 
 # create one more neuron that listenes to the last two layers.
 # This can be thought of as the decision making neuron
