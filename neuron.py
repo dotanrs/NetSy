@@ -138,6 +138,9 @@ class Neuron:
 	def get_activation(self):
 		return self.activation
 
+	def set_activation(self, val):
+		self.activation = val
+
 	def get_signal(self):
 		return self.activation
 
@@ -151,6 +154,10 @@ class Neuron:
 		self.in_synapses = max(self.in_synapses - by, 1)
 
 	def _append_to_synapses(self, neuron, connection_strength = DEFAULT_CONNECTION_STRENGTH):
+		for (neu, val) in self.out_synapses:
+			if neu == neuron:
+				self.out_synapses.remove((neu, val))
+
 		self.out_synapses.append((neuron, connection_strength))
 
 	def send_to(self, neuron, connection_strength = DEFAULT_CONNECTION_STRENGTH):
@@ -163,6 +170,9 @@ class Neuron:
 		neuron._increase_input_count()
 
 	def listen_to(self, neuron, connection_strength = DEFAULT_CONNECTION_STRENGTH):
+		""" Note: if connection was previously defined it will be replaced.
+		To change the strength you can also use increase_connection_strength
+		"""
 		if isinstance(neuron, list):
 			for single_neuron in neuron:
 				self.listen_to(single_neuron, connection_strength)
@@ -177,9 +187,16 @@ class Neuron:
 	def set_lifespan(self, new_value):
 		self.lifespan = new_value
 
-	# TODO
-	def update_connection_strength(self, neuron, value):
-		pass
+	def increase_connection_strength(self, neuron, value):
+		if isinstance(neuron, list):
+			for single_neuron in neuron:
+				self.increase_connection_strength(single_neuron, value)
+			return
+
+		val = (sum([i[1] for i in self.out_synapses if i[0] == neuron]) or 0) + value
+		if isinstance(val, list):
+			val = sum(val)
+		self._append_to_synapses(neuron, val)
 
 
 class ThresholdNeuron(Neuron):
@@ -311,4 +328,22 @@ class SigmoidNeuron(Neuron):
 
 	def _internal_processes(self):
 		pass # self.activation = Utils.decay(self.activation, self.decay_coefficient)
+
+class LimitSigmoidNeuron(SigmoidNeuron):
+
+	def __init__(self, **kwargs):
+		super().__init__(**kwargs)
+		self.tanh_beta = get_from_kwargs_or_default("tanh_beta", float("inf"), **kwargs)
+
+	def _type_identifier(self):
+		return "LSIG"
+
+	def _apply_input(self):
+
+		if self.input != 0:
+			inpt_limit = math.tanh(self.tanh_beta(self.input + self.tanh_bias))
+			der = -self.activation + inpt_limit
+			self.activation += der * self.der_step
+			self.input = 0
+		self._log("current", self.activation)
 

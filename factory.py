@@ -6,3 +6,4 @@ class NeuronDict:
 	threshold = ThresholdNeuron
 	sigmoid = SigmoidNeuron
 	binarynoise = BinaryNoiseNeuron
+	limsigmoid = LimitSigmoidNeuron

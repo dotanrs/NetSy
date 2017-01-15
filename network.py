@@ -1,4 +1,5 @@
 from . import neuron as n
+import random
 
 class Network:
 
@@ -26,6 +27,7 @@ class Network:
 
     def create_neuron_array(self, size=3, ntype=None, **kwargs):
         neurons = []
+        name = None
         if "name" in kwargs:
             name = kwargs["name"]
         for i in range(size):
@@ -43,6 +45,26 @@ class Network:
 
         neuron.set_lifespan(lifespan)
 
+    def all_to_all_connectivity(self, neurons=None, connection_strength=0):
+        if not neurons:
+            neurons = self.neurons
+
+        for i in range(len(neurons) - 1):
+            neurons[i].listen_to(neurons[i+1], connection_strength)
+            neurons[i].send_to(neurons[i+1], connection_strength)
+
+    def apply_pattern(self, pattern):
+        for neuron in self.neurons:
+            if neuron in pattern:
+                neuron.set_activation(1)
+            else:
+                neuron.set_activation(-1)
+
+    def apply_noise(self, size=0.01):
+        for neuron in self.neurons:
+            noise = (random.random() - 0.5) * size
+            neuron.set_activation(neuron.get_activation() + noise)
+
     def run(self):
         for neuron in self.neurons:
             neuron.run()
@@ -51,15 +73,22 @@ class Network:
     def neuron_list(self):
         return self.neurons
 
-    def run_and_get_activations(self, neurons = None, steps = 80):
+    def run_and_get_activations(self, neurons=None, activations=None, steps=80):
 
         if not neurons:
             neurons = self.neuron_list
         
-        activations = {}
-        for neuron in neurons:
-            activations[neuron] = []
-        
+        if not activations:
+            activations = {}
+            for neuron in neurons:
+                activations[neuron] = []
+
+        else:
+            for neuron in neurons:
+                if neuron not in activations:
+                    activations[neuron] = []
+
+
         for i in range(steps):
             for neuron in neurons:
                 activations[neuron].append(neuron.get_activation())
@@ -67,8 +96,28 @@ class Network:
             self.run()
                 
         return activations
+
+    def run_and_get_results(self, func, func_steps=10, results=None, steps=80):
+
+        if not results:
+            results = []
+
+        activations = {}
+        for neuron in self.neurons:
+            activations[neuron] = []
+
+        for i in range(steps):
+            if func and  i % func_steps == 0:
+                results.append(func(self.neurons))
+
+                for neuron in self.neurons:
+                    activations[neuron].append(neuron.get_activation())
+
+            self.run()
+
+        return results, activations
         
-    def run_and_get_phases(self, neurons = None, steps = 80):
+    def run_and_get_phases(self, neurons=None, steps=80):
 
         if not neurons:
             neurons = self.neuron_list
