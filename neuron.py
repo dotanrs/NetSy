@@ -1,7 +1,7 @@
 import random
 import math
 
-DEFAULT_CONNECTION_STRENGTH = 10
+DEFAULT_CONNECTION_STRENGTH = 1
 ACTIVATION_RANGE_HIGH = 2
 ACTIVATION_RANGE_LOW = -1.5
 DEFAULT_NOISE_MEAN = 0.5
@@ -25,8 +25,11 @@ class Neuron:
 	A simple neuron that transmit the input it recieves
 	"""
 
-	def __init__(self, name = "anonymous neuron", **kwargs):
+	def __init__(self, network, index, name = "anonymous neuron", **kwargs):
 		range_default = [ACTIVATION_RANGE_LOW, ACTIVATION_RANGE_HIGH]
+
+		self.network = network
+		self.index = index
 
 		# The minimal and maximal values of activation the neuron can have
 		self.range = get_from_kwargs_or_default("range", range_default, **kwargs)
@@ -38,17 +41,13 @@ class Neuron:
 		self.log = get_from_kwargs_or_default("log", False, **kwargs)
 
 		# The length of the refractory period, if set
-		self.refractory_time = get_from_kwargs_or_default("refractory_time", 2, **kwargs)
-
-		# Array of neurons to send the signal to
-		self.out_synapses = []
+		self.refractory_time = get_from_kwargs_or_default("refractory_time", 10, **kwargs)
 
 		# Number of iterations passed
 		self.ticks = 0
 
 		self.activation = self.range[0]
 		self.name = self._name_prefix + name
-		self.in_synapses = 0
 		self.input = 0
 		self.in_refractory_period = False
 		self.refractory_period_timer = 0
@@ -61,10 +60,13 @@ class Neuron:
 	def _type_identifier(self):
 		return "N"
 
-	def _log(self, param, value):
+	def _log(self, param, value, second_val=None):
 		if not self.log:
 			return
-		print("[%s] %s = %s" % (self.name, param, str(value)))
+		if second_val:
+			print("%d. [%s] %s = %s, %s" % (self.ticks, self.name, param, str(value), str(second_val)))
+		else:
+			print("%d. [%s] %s = %s" % (self.ticks, self.name, param, str(value)))
 
 	def _apply_input(self):
 		self._log("Input", self.input)
@@ -97,6 +99,7 @@ class Neuron:
 		network
 		"""
 		if not self.is_active:
+			self.network.set_activation(self.index, 0)
 			return
 
 		self.ticks += 1
@@ -104,9 +107,6 @@ class Neuron:
 		if self.lifespan and self.ticks > self.lifespan:
 			self.activation = 0
 			self.is_active = False
-			for neuron, connection_strength in self.out_synapses:
-				neuron._decrease_input_count(1)
-			return
 		
 		self._internal_processes()
 
@@ -116,21 +116,16 @@ class Neuron:
 			else:
 				self.refractory_period_timer += 1
 				self.activation = self.range[0]
-				return
+				self._log("in refractory period", self.refractory_period_timer)
 
 		self._calc_output()
 
-		signal = self.get_signal()
-
-		if signal !=0:
-			self._log("Sendind signal", signal)
-			for neuron, connection_strength in self.out_synapses:
-				neuron._log("Receiving signal", str(signal) + " * " + str(connection_strength))
-				neuron.recieve_signal(signal * connection_strength)
+		self.network.set_activation(self.index, self.get_signal())
 
 
-	def show_log(self):
-		self.log = True
+	def show_log(self, val=True):
+		self.log = val
+		self._log("start log, name", self.name)
 
 	def get_name(self):
 		return self.name
@@ -139,64 +134,29 @@ class Neuron:
 		return self.activation
 
 	def set_activation(self, val):
+		self._log("Manual activation", val)
 		self.activation = val
 
 	def get_signal(self):
 		return self.activation
 
-	def recieve_signal(self, signal):
+	def add_input(self, signal):
 		self.input += signal
 
-	def _increase_input_count(self, by=1):
-		self.in_synapses += by
-
-	def _decrease_input_count(self, by=1):
-		self.in_synapses = max(self.in_synapses - by, 1)
-
-	def _append_to_synapses(self, neuron, connection_strength = DEFAULT_CONNECTION_STRENGTH):
-		for (neu, val) in self.out_synapses:
-			if neu == neuron:
-				self.out_synapses.remove((neu, val))
-
-		self.out_synapses.append((neuron, connection_strength))
-
 	def send_to(self, neuron, connection_strength = DEFAULT_CONNECTION_STRENGTH):
-		if isinstance(neuron, list):
-			for single_neuron in neuron:
-				self.send_to(single_neuron, connection_strength)
-			return
-
-		self._append_to_synapses(neuron, connection_strength)
-		neuron._increase_input_count()
+		self.network.set_connections(neuron, self, connection_strength)
 
 	def listen_to(self, neuron, connection_strength = DEFAULT_CONNECTION_STRENGTH):
 		""" Note: if connection was previously defined it will be replaced.
 		To change the strength you can also use increase_connection_strength
 		"""
-		if isinstance(neuron, list):
-			for single_neuron in neuron:
-				self.listen_to(single_neuron, connection_strength)
-			return
-
-		if not (isinstance(connection_strength, int) or isinstance(connection_strength, float)):
-			connection_strength = random.random()
-
-		neuron._append_to_synapses(self, connection_strength)
-		self._increase_input_count()
+		self.network.set_connections(self, neuron, connection_strength)
 
 	def set_lifespan(self, new_value):
 		self.lifespan = new_value
 
 	def increase_connection_strength(self, neuron, value):
-		if isinstance(neuron, list):
-			for single_neuron in neuron:
-				self.increase_connection_strength(single_neuron, value)
-			return
-
-		val = (sum([i[1] for i in self.out_synapses if i[0] == neuron]) or 0) + value
-		if isinstance(val, list):
-			val = sum(val)
-		self._append_to_synapses(neuron, val)
+		self.network.increase_connections(neuron, self)
 
 
 class ThresholdNeuron(Neuron):
@@ -223,9 +183,8 @@ class ThresholdNeuron(Neuron):
 			return 0
 
 	def _apply_input(self):
-
-		if self.in_synapses > 0 and not self.in_refractory_period:
-			self.activation += self.input # / self.in_synapses
+		if not self.in_refractory_period:
+			self.activation += self.input
 			self.input = 0
 
 		if self.activation >= self.threshold:
@@ -312,19 +271,15 @@ class SigmoidNeuron(Neuron):
 		pass
 
 	def _apply_input(self):
-
-		if self.input != 0:
-			der = -self.activation + self.bias + math.tanh(self.input + self.tanh_bias)
-			self.activation += der * self.der_step
-			self.input = 0
+		dif = self.bias + math.tanh(self.input + self.tanh_bias)
+		der = -self.activation + dif
+		self._log("input, der", self.input, dif)
+		self.activation += der * self.der_step
+		self.input = 0
 		self._log("current", self.activation)
-
 
 	def get_signal(self):
 		return self.activation
-
-	def get_activation(self):
-		return self.activation # + random.random()
 
 	def _internal_processes(self):
 		pass # self.activation = Utils.decay(self.activation, self.decay_coefficient)
@@ -341,7 +296,7 @@ class LimitSigmoidNeuron(SigmoidNeuron):
 	def _apply_input(self):
 
 		if self.input != 0:
-			inpt_limit = math.tanh(self.tanh_beta(self.input + self.tanh_bias))
+			inpt_limit = math.tanh(self.tanh_beta * (self.input + self.tanh_bias))
 			der = -self.activation + inpt_limit
 			self.activation += der * self.der_step
 			self.input = 0

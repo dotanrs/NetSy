@@ -15,19 +15,19 @@ thei = - 10 * j
 # Create a network with two sigmoid neurons. The definition of one as inihibitory
 # and one as excitatory will be expressed in the connections
 net = n.Network()
-inhibitory = net.create_neuron(name="in", ntype=nd.sigmoid, bias=10, tanh_bias=thei, init=10.00001, log=False)
-excitatory = net.create_neuron(name="ex", ntype=nd.limsigmoid, bias=10, tanh_bias=thee, init=10.00001, log=False)
+inhibitory = net.create_neuron(name="in", ntype=nd.sigmoid, bias=10, tanh_bias=thei, init=10.00001, log=False, der_step=0.002)
+excitatory = net.create_neuron(name="ex", ntype=nd.sigmoid, bias=10, tanh_bias=thee, init=10.00001, log=False, der_step=0.002)
 
 # Create connections. note that the excitatory neuron listens to itself
 excitatory.listen_to(inhibitory, -j)
 excitatory.listen_to(excitatory, jee)
 inhibitory.listen_to(excitatory, j)
 
-activations = net.run_and_get_activations(steps=100000)
+activations = net.run_and_get_activations(steps=50000)
 
 # An example of changing the network in mid-run. comment to see without
-excitatory.listen_to(inhibitory, -2 * j)
-activations = net.run_and_get_activations(activations=activations, steps=100)
+# excitatory.listen_to(inhibitory, -2 * j)
+# activations = net.run_and_get_activations(activations=activations, steps=100)
 
 # Print the results
 
@@ -38,7 +38,8 @@ fig = plt.figure()
 
 ## left panel
 ax1 = fig.add_subplot(121)
-ax1.scatter(activations[inhibitory],activations[excitatory],color='blue',s=5,edgecolor='none')
+ax1.scatter(activations[:, inhibitory.index],activations[:, excitatory.index],color='blue', s=5, edgecolor='none')
+plt.axis((9.9999, 10.0001, 9.9999, 10.0001))
 
 # make axes square
 ax1.set_aspect(1./ax1.get_data_ratio())
