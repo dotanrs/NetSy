@@ -12,7 +12,7 @@ class Network:
         self.num_neurons = 0
 
     def _neurons_to_indices(self, neuron_array):
-        if not isinstance(input_n, list):
+        if not isinstance(neuron_array, list):
             neuron_array = [neuron_array]
         return [n.index for n in neuron_array]
 
@@ -54,8 +54,11 @@ class Network:
 
 
     def set_activation(self, index, value):
-        self.activations[index] = value
-
+        try:
+            self.activations[index] = value
+        except IndexError:
+            self._init_activation()
+            self.activations[index] = value
 
     def _set_neuron_connection(self, source, targets, value):
         if not (isinstance(value, int) or isinstance(value, float)):
@@ -70,12 +73,19 @@ class Network:
         for n in sources:
             self._set_neuron_connection(n, targets, value)
 
-    def update_connection_strength(input_n, output_n, new_value):
-        input_n = _neurons_to_indices(input_n)
-        output_n = _neurons_to_indices(output_n)
+    def update_connection_strength(self, input_n, output_n, new_value):
+        input_n = self._neurons_to_indices(input_n)
+        output_n = self._neurons_to_indices(output_n)
 
         self.connections[input_n, output_n] = new_value
         self.connections[output_n, input_n] = new_value
+
+    def increase_connection_strength(self, input_n, output_n, value):
+        input_n = self._neurons_to_indices(input_n)
+        output_n = self._neurons_to_indices(output_n)
+
+        self.connections[input_n, output_n] += value
+        self.connections[output_n, input_n] += value
 
 
     def all_to_all_connectivity(self, neurons=None, connection_strength=0):
@@ -120,6 +130,7 @@ class Network:
         return self.neurons
 
 
+    # TODO: DRY in the next two methods
     def run_and_get_activations(self, neurons=None, activations=None, steps=80):
 
         if not neurons:
@@ -147,20 +158,21 @@ class Network:
         if not results:
             results = []
 
-        activations = {}
-        for neuron in self.neurons:
-            activations[neuron] = []
+        self._init_activation()
 
+        activations = []
         for i in range(steps):
+
+            inputs = np.mat(self.connections) * np.mat(np.transpose(self.activations)).T
+
             if func and  i % func_steps == 0:
                 results.append(func(self.neurons))
 
-                for neuron in self.neurons:
-                    activations[neuron].append(neuron.get_activation())
+            activations.append(copy.deepcopy(self.activations))
 
             self.run()
 
-        return results, activations
+        return results, np.mat(activations)
         
 
     def run_and_get_phases(self, neurons=None, steps=80):

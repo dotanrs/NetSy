@@ -156,7 +156,7 @@ class Neuron:
 		self.lifespan = new_value
 
 	def increase_connection_strength(self, neuron, value):
-		self.network.increase_connections(neuron, self)
+		self.network.increase_connection_strength(neuron, self, value)
 
 
 class ThresholdNeuron(Neuron):
