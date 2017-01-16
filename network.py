@@ -12,7 +12,7 @@ class Network:
         self.num_neurons = 0
 
     def _neurons_to_indices(self, neuron_array):
-        if not isinstance(neuron_array, list):
+        if not isinstance(neuron_array, list) and not isinstance(neuron_array, np.ndarray):
             neuron_array = [neuron_array]
         return [n.index for n in neuron_array]
 
@@ -97,6 +97,13 @@ class Network:
             neurons[i].send_to(neurons[i+1], connection_strength)
 
 
+    def self_connections(self, neurons=None, value=0):
+        neurons = neurons or self.neurons
+        neurons = self._neurons_to_indices(neurons)
+
+        self.connections[neurons, neurons] = value
+
+
     def set_lifespan(self, neuron, lifespan):
         if isinstance(neuron, list):
             for single_neuron in neuron:
@@ -157,7 +164,7 @@ class Network:
             return results, np.mat(activations)
         return np.mat(activations)
 
-    # TODO: DRY in the next two methods
+
     def run_and_get_activations(self, neurons=None, activations=None, steps=80):
         return self._run_and_execute(neurons, activations, steps)
 

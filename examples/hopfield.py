@@ -6,15 +6,17 @@ from netsy import display as d
 from netsy.factory import NeuronDict as nd
 import random
 
-NUM_PATTERNS = 4
-PATTERN_PROB = 0.5
+NUM_PATTERNS = 6
+PATTERN_PROB = 0.4
 STEPS = 300
-NUM_NEURONS = 200
+NUM_NEURONS = 1000
 DER_STEP = 0.005
+TANH_BETA = 0.9
+
 
 # Create a network of sigmoid neurons
 net = n.Network()
-neurons = net.create_neuron_array(ntype=nd.sigmoid, size=NUM_NEURONS, init=0, der_step=DER_STEP)
+neurons = net.create_neuron_array(ntype=nd.sigmoid, size=NUM_NEURONS, init=0, tanh_beta=TANH_BETA, der_step=DER_STEP)
 
 # neurons[0].show_log()
 # create all-to-all connectivity
@@ -37,6 +39,8 @@ for i in range(NUM_PATTERNS):
 		n.increase_connection_strength(active, connection_strength * q)
 		n.increase_connection_strength(others, connection_strength * -q)
 
+## resets the connection of each neuron to itself to zero
+net.self_connections()
 
 # print([[x.index for x in pattern] for pattern in patterns])
 
@@ -51,8 +55,10 @@ pattern = patterns[-1]
 # set the initial state of the network. You can start the network from
 # a pattern and add noise, or just use noise to see if a pattern is selected
 
+## To check if a pattern is stable, apply the pattern, add noise and run
 # net.apply_pattern(pattern)
-# the parameter of the noise function is the size of the scatter
+
+## the parameter of the noise function is the size of the scatter
 net.apply_noise(0.5)
 
 # helper function that check if the pattern matches the activity

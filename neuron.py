@@ -288,6 +288,9 @@ class LimitSigmoidNeuron(SigmoidNeuron):
 
 	def __init__(self, **kwargs):
 		super().__init__(**kwargs)
+
+		# The input is calculated by tanh(tanh_beta * input). for tanh_beta => infinity
+		# the tanh function => binary function (+-1)
 		self.tanh_beta = get_from_kwargs_or_default("tanh_beta", float("inf"), **kwargs)
 
 	def _type_identifier(self):
