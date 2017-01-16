@@ -39,7 +39,7 @@ fig = plt.figure()
 ## left panel
 ax1 = fig.add_subplot(121)
 ax1.scatter(activations[:, inhibitory.index],activations[:, excitatory.index],color='blue', s=5, edgecolor='none')
-plt.axis((9.9999, 10.0001, 9.9999, 10.0001))
+plt.axis((9.99995, 10.00005, 9.99995, 10.00005))
 
 # make axes square
 ax1.set_aspect(1./ax1.get_data_ratio())

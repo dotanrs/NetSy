@@ -50,8 +50,6 @@ top_level.listen_to(sigmoid, 5)
 # run the network and print the results
 activations = net.run_and_get_activations()
 
-print(activations[:, top_level.index])
-
 show_labels = False
 
 plt.subplot(411)

@@ -129,12 +129,12 @@ class Network:
     def neuron_list(self):
         return self.neurons
 
-
-    # TODO: DRY in the next two methods
-    def run_and_get_activations(self, neurons=None, activations=None, steps=80):
-
+    def _run_and_execute(self, neurons=None, activations=None, steps=80, func=None, results=None, delta=10):
         if not neurons:
             neurons = self.neuron_list
+
+        if func and not results:
+            results = []
 
         self._init_activation()
 
@@ -148,31 +148,22 @@ class Network:
 
             activations.append(copy.deepcopy(self.activations))
 
-            self.run()
-                
-        return np.mat(activations)
-
-
-    def run_and_get_results(self, func, func_steps=10, results=None, steps=80):
-
-        if not results:
-            results = []
-
-        self._init_activation()
-
-        activations = []
-        for i in range(steps):
-
-            inputs = np.mat(self.connections) * np.mat(np.transpose(self.activations)).T
-
-            if func and  i % func_steps == 0:
+            if func and  i % delta == 0:
                 results.append(func(self.neurons))
 
-            activations.append(copy.deepcopy(self.activations))
-
             self.run()
+                
+        if func:
+            return results, np.mat(activations)
+        return np.mat(activations)
 
-        return results, np.mat(activations)
+    # TODO: DRY in the next two methods
+    def run_and_get_activations(self, neurons=None, activations=None, steps=80):
+        return self._run_and_execute(neurons, activations, steps)
+
+
+    def run_and_get_results(self, func, delta=10, results=None, steps=80):
+        return self._run_and_execute(func=func, delta=delta, results=results, steps=steps)
         
 
     def run_and_get_phases(self, neurons=None, steps=80):
