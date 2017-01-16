@@ -6,18 +6,17 @@ from netsy import display as d
 from netsy.factory import NeuronDict as nd
 import random
 
-NUM_PATTERNS = 3
-PATTERN_PROB = 0.3
-STEPS = 140
-NUM_NEURONS = 150
-DER_STEP = 0.01
+NUM_PATTERNS = 4
+PATTERN_PROB = 0.5
+STEPS = 300
+NUM_NEURONS = 200
+DER_STEP = 0.005
 
 # Create a network of sigmoid neurons
 net = n.Network()
 neurons = net.create_neuron_array(ntype=nd.sigmoid, size=NUM_NEURONS, init=0, der_step=DER_STEP)
 
-
-
+# neurons[0].show_log()
 # create all-to-all connectivity
 net.all_to_all_connectivity(neurons, 0)
 
@@ -39,6 +38,7 @@ for i in range(NUM_PATTERNS):
 		n.increase_connection_strength(others, connection_strength * -q)
 
 
+# print([[x.index for x in pattern] for pattern in patterns])
 
 # start the network at a pattern and check the activity.
 # is the pattern activity stable?

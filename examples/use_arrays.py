@@ -39,13 +39,13 @@ for neuron in sigmoid:
 	neuron.listen_to(listento, 10)
 
 # Select this neuron to print it's logs to console
-sigmoid[-1].show_log()
+# sigmoid[-1].show_log()
 
 # create one more neuron that listenes to the last two layers.
 # This can be thought of as the decision making neuron
-top_level = net.create_neuron(name="top", ntype=nd.threshold, log=False, threshold=2)
-top_level.listen_to(threshold, 0.1)
-top_level.listen_to(sigmoid, 0.1)
+top_level = net.create_neuron(name="top", ntype=nd.threshold, log=True, threshold=2)
+top_level.listen_to(threshold, 10)
+top_level.listen_to(sigmoid, 5)
 
 # run the network and print the results
 activations = net.run_and_get_activations()
